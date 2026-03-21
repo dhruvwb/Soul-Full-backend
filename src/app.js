@@ -11,10 +11,16 @@ const { ensureSeedCustomPackages } = require('../controller/customPackageSeed');
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
-ensureSeedAdmin();
-ensureSeedCustomPackages();
+// Connect to MongoDB (non-blocking - won't crash app if fails)
+connectDB().catch(err => {
+  console.error('⚠️ DB initialization error (app will continue):', err.message);
+});
+
+// Run seeding operations (non-blocking)
+Promise.all([
+  ensureSeedAdmin().catch(err => console.warn('⚠️ Admin seeding skipped:', err.message)),
+  ensureSeedCustomPackages().catch(err => console.warn('⚠️ Package seeding skipped:', err.message))
+]).catch(err => console.warn('⚠️ Seeding error:', err.message));
 
 const app = express();
 

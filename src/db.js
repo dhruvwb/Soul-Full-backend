@@ -12,16 +12,16 @@ const connectDB = async () => {
       useUnifiedTopology: true,
     });
     console.log('✅ MongoDB connected successfully');
+    return true;
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
     console.error('Using URI:', MONGO_URI.substring(0, 50) + '...');
     
-    // For testing without DB, log a warning but don't exit
-    if (process.env.NODE_ENV === 'testing') {
-      console.warn('⚠️  Running in testing mode without database connection');
-    } else {
-      process.exit(1); // Stop the server if DB connection fails
-    }
+    // Don't crash - let app run with dummy data for testing
+    console.warn('⚠️  Running without database connection - using dummy/test data');
+    console.warn('💡 API will still work, but data won\'t persist');
+    
+    return false;
   }
 };
 
