@@ -1,4 +1,4 @@
-const News = require('../models/newsModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 
 const parseBoolean = value => {
@@ -7,7 +7,8 @@ const parseBoolean = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await News.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('news');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -18,7 +19,7 @@ exports.create = async (req, res) => {
     imageUrl,
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await News.create(payload);
+  const doc = await createDoc('news', payload);
   await logActivity(`Added news: ${doc.title}`);
   res.status(201).json(doc);
 };
@@ -31,7 +32,7 @@ exports.update = async (req, res) => {
     isActive: parseBoolean(req.body.isActive)
   };
 
-  const doc = await News.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('news', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'News item not found' });
   }
@@ -40,20 +41,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await News.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('news', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'News item not found' });
   }
+  await deleteDoc('news', req.params.id);
   await logActivity(`Deleted news: ${doc.title}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await News.findById(req.params.id);
+  const doc = await getDocById('news', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'News item not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('news', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };

@@ -1,4 +1,4 @@
-const PackageCategory = require('../models/packageCategoryModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 const slugify = require('../utils/slugify');
 
@@ -8,7 +8,8 @@ const parseBoolean = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await PackageCategory.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('packageCategories');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -23,7 +24,7 @@ exports.create = async (req, res) => {
   if (slugSource) {
     payload.slug = slugify(slugSource);
   }
-  const doc = await PackageCategory.create(payload);
+  const doc = await createDoc('packageCategories', payload);
   await logActivity(`Added package category: ${doc.title}`);
   res.status(201).json(doc);
 };
@@ -40,7 +41,7 @@ exports.update = async (req, res) => {
     payload.slug = slugify(slugSource);
   }
 
-  const doc = await PackageCategory.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('packageCategories', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Category not found' });
   }
@@ -49,20 +50,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await PackageCategory.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('packageCategories', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Category not found' });
   }
+  await deleteDoc('packageCategories', req.params.id);
   await logActivity(`Deleted package category: ${doc.title}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await PackageCategory.findById(req.params.id);
+  const doc = await getDocById('packageCategories', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Category not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('packageCategories', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };

@@ -1,4 +1,4 @@
-const Destination = require('../models/destinationModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 const slugify = require('../utils/slugify');
 
@@ -20,7 +20,8 @@ const buildImages = req => {
 };
 
 exports.list = async (req, res) => {
-  const items = await Destination.find().sort({ enquiriesCount: -1, createdAt: -1 });
+  const items = await getAllDocs('destinations');
+  items.sort((a, b) => (b.enquiriesCount || 0) - (a.enquiriesCount || 0) || (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -38,7 +39,7 @@ exports.create = async (req, res) => {
   // Remove raw form fields that shouldn't go to the model
   delete payload.existingImages;
   delete payload.existingImage;
-  const doc = await Destination.create(payload);
+  const doc = await createDoc('destinations', payload);
   await logActivity(`Added destination: ${doc.name}`);
   res.status(201).json(doc);
 };
@@ -70,7 +71,7 @@ exports.update = async (req, res) => {
   delete payload.existingImages;
   delete payload.existingImage;
 
-  const doc = await Destination.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('destinations', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Destination not found' });
   }
@@ -79,20 +80,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await Destination.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('destinations', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Destination not found' });
   }
+  await deleteDoc('destinations', req.params.id);
   await logActivity(`Deleted destination: ${doc.name}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await Destination.findById(req.params.id);
+  const doc = await getDocById('destinations', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Destination not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('destinations', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };

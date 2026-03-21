@@ -1,4 +1,4 @@
-const GalleryItem = require('../models/galleryItemModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 
 const parseBoolean = value => {
@@ -19,7 +19,8 @@ const buildItemsFromFiles = (files, basePayload) =>
   }));
 
 exports.list = async (req, res) => {
-  const items = await GalleryItem.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('galleryItems');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -36,7 +37,8 @@ exports.create = async (req, res) => {
     isActive: parseBoolean(req.body.isActive)
   };
   const items = buildItemsFromFiles(files, basePayload);
-  const docs = await GalleryItem.insertMany(items);
+  // Create multiple documents (one per file)
+  const docs = await Promise.all(items.map(item => createDoc('galleryItems', item)));
   await logActivity(`Added ${docs.length} gallery item(s)`);
   res.status(201).json(docs);
 };
@@ -54,7 +56,7 @@ exports.update = async (req, res) => {
     isActive: parseBoolean(req.body.isActive)
   };
 
-  const doc = await GalleryItem.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('galleryItems', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Gallery item not found' });
   }
@@ -63,20 +65,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await GalleryItem.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('galleryItems', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Gallery item not found' });
   }
+  await deleteDoc('galleryItems', req.params.id);
   await logActivity(`Deleted gallery item: ${doc.title || doc.mediaType}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await GalleryItem.findById(req.params.id);
+  const doc = await getDocById('galleryItems', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Gallery item not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('galleryItems', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };
