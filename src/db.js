@@ -1,28 +1,25 @@
 // src/db.js
-const mongoose = require('mongoose');
-require('dotenv').config();
+/**
+ * Database Connection
+ * Now using Firebase Firestore instead of MongoDB
+ */
 
-// Support both MONGODB_URI (production) and MONGO_URI (local development)
-const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/TravelWeb';
+const { admin, db } = require('./firebaseConfig');
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-    console.log('✅ MongoDB connected successfully');
+    // Test connection by reading from Firestore
+    const testCollection = await db.collection('_healthcheck').limit(1).get();
+    console.log('✅ Firebase Firestore connected successfully');
+    console.log(`📚 Firestore project: ${admin.app().options.projectId}`);
     return true;
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error.message);
-    console.error('Using URI:', MONGO_URI.substring(0, 50) + '...');
-    
-    // Don't crash - let app run with dummy data for testing
+    console.error('❌ Firebase Firestore connection failed:', error.message);
     console.warn('⚠️  Running without database connection - using dummy/test data');
     console.warn('💡 API will still work, but data won\'t persist');
-    
     return false;
   }
 };
 
 module.exports = connectDB;
+
