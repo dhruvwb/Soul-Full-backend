@@ -1,4 +1,4 @@
-const DomesticPackage = require('../models/domesticPackageModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 const slugify = require('../utils/slugify');
 
@@ -24,7 +24,8 @@ const parseIdList = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await DomesticPackage.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('domesticPackages');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -41,7 +42,7 @@ exports.create = async (req, res) => {
   if (slugSource) {
     payload.slug = slugify(slugSource);
   }
-  const doc = await DomesticPackage.create(payload);
+  const doc = await createDoc('domesticPackages', payload);
   await logActivity(`Added domestic package: ${doc.title}`);
   res.status(201).json(doc);
 };
@@ -64,9 +65,7 @@ exports.update = async (req, res) => {
     payload.slug = slugify(slugSource);
   }
 
-  const doc = await DomesticPackage.findByIdAndUpdate(req.params.id, payload, {
-    new: true
-  });
+  const doc = await updateDoc('domesticPackages', req.params.id, payload);
 
   if (!doc) {
     return res.status(404).json({ message: 'Package not found' });
@@ -77,20 +76,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await DomesticPackage.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('domesticPackages', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Package not found' });
   }
+  await deleteDoc('domesticPackages', req.params.id);
   await logActivity(`Deleted domestic package: ${doc.title}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await DomesticPackage.findById(req.params.id);
+  const doc = await getDocById('domesticPackages', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Package not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('domesticPackages', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };

@@ -1,4 +1,4 @@
-const CustomPackage = require('../models/customPackageModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 
 const parseBoolean = value => {
@@ -7,7 +7,8 @@ const parseBoolean = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await CustomPackage.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('customPackages');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -20,7 +21,7 @@ exports.create = async (req, res) => {
     imageUrl,
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await CustomPackage.create(payload);
+  const doc = await createDoc('customPackages', payload);
   await logActivity(`Added customized package: ${doc.title}`);
   res.status(201).json(doc);
 };
@@ -35,7 +36,7 @@ exports.update = async (req, res) => {
     isActive: parseBoolean(req.body.isActive)
   };
 
-  const doc = await CustomPackage.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('customPackages', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Customized package not found' });
   }
@@ -44,20 +45,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await CustomPackage.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('customPackages', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Customized package not found' });
   }
+  await deleteDoc('customPackages', req.params.id);
   await logActivity(`Deleted customized package: ${doc.title}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await CustomPackage.findById(req.params.id);
+  const doc = await getDocById('customPackages', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Customized package not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('customPackages', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };
