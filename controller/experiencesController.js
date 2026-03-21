@@ -1,12 +1,13 @@
-const Experience = require('../models/experienceModel');
-const ExperienceSubcategory = require('../models/experienceSubcategoryModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc, queryDocs } = require('../utils/firestoreHelpers');
 
 // Get all experience categories
 exports.getAllExperiences = async (req, res) => {
   try {
-    const experiences = await Experience.find({ isActive: true });
-    res.status(200).json(experiences);
+    const experiences = await getAllDocs('experiences');
+    const activeExperiences = experiences.filter(exp => exp.isActive !== false);
+    res.status(200).json(activeExperiences);
   } catch (err) {
+    console.error('Error fetching experiences:', err);
     res.status(500).json({ error: 'Failed to fetch experiences' });
   }
 };
@@ -14,10 +15,12 @@ exports.getAllExperiences = async (req, res) => {
 // Get a specific experience category by slug
 exports.getExperienceBySlug = async (req, res) => {
   try {
-    const experience = await Experience.findOne({ slug: req.params.experienceSlug, isActive: true });
+    const experiences = await getAllDocs('experiences');
+    const experience = experiences.find(exp => exp.slug === req.params.experienceSlug && exp.isActive !== false);
     if (!experience) return res.status(404).json({ error: 'Experience not found' });
     res.status(200).json(experience);
   } catch (err) {
+    console.error('Error fetching experience:', err);
     res.status(500).json({ error: 'Failed to fetch experience' });
   }
 };
@@ -25,10 +28,10 @@ exports.getExperienceBySlug = async (req, res) => {
 // Create a new experience category
 exports.createExperience = async (req, res) => {
   try {
-    const experience = new Experience(req.body);
-    await experience.save();
-    res.status(201).json(experience);
+    const doc = await createDoc('experiences', req.body);
+    res.status(201).json(doc);
   } catch (err) {
+    console.error('Error creating experience:', err);
     res.status(400).json({ error: 'Failed to create experience', details: err.message });
   }
 };
@@ -36,14 +39,14 @@ exports.createExperience = async (req, res) => {
 // Update an experience category
 exports.updateExperience = async (req, res) => {
   try {
-    const updated = await Experience.findOneAndUpdate(
-      { slug: req.params.experienceSlug },
-      req.body,
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ error: 'Experience not found' });
+    const experiences = await getAllDocs('experiences');
+    const experience = experiences.find(exp => exp.slug === req.params.experienceSlug);
+    if (!experience) return res.status(404).json({ error: 'Experience not found' });
+    
+    const updated = await updateDoc('experiences', experience._id, req.body);
     res.status(200).json(updated);
   } catch (err) {
+    console.error('Error updating experience:', err);
     res.status(400).json({ error: 'Failed to update experience', details: err.message });
   }
 };
@@ -51,10 +54,14 @@ exports.updateExperience = async (req, res) => {
 // Delete an experience category
 exports.deleteExperience = async (req, res) => {
   try {
-    const deleted = await Experience.findOneAndDelete({ slug: req.params.experienceSlug });
-    if (!deleted) return res.status(404).json({ error: 'Experience not found' });
+    const experiences = await getAllDocs('experiences');
+    const experience = experiences.find(exp => exp.slug === req.params.experienceSlug);
+    if (!experience) return res.status(404).json({ error: 'Experience not found' });
+    
+    await deleteDoc('experiences', experience._id);
     res.status(200).json({ message: 'Experience deleted successfully' });
   } catch (err) {
+    console.error('Error deleting experience:', err);
     res.status(500).json({ error: 'Failed to delete experience' });
   }
 };
@@ -62,16 +69,18 @@ exports.deleteExperience = async (req, res) => {
 // Get all subcategories under a specific experience
 exports.getSubcategoriesByExperience = async (req, res) => {
   try {
-    const experience = await Experience.findOne({ slug: req.params.experienceSlug });
+    const experiences = await getAllDocs('experiences');
+    const experience = experiences.find(exp => exp.slug === req.params.experienceSlug);
     if (!experience) return res.status(404).json({ error: 'Experience not found' });
 
-    const subcategories = await ExperienceSubcategory.find({
-      experienceId: experience._id,
-      isActive: true
-    });
+    const subcategories = await getAllDocs('experienceSubcategories');
+    const filtered = subcategories.filter(sub => 
+      sub.experienceId === experience._id && sub.isActive !== false
+    );
 
-    res.status(200).json(subcategories);
+    res.status(200).json(filtered);
   } catch (err) {
+    console.error('Error fetching subcategories:', err);
     res.status(500).json({ error: 'Failed to fetch subcategories' });
   }
 };
@@ -79,19 +88,22 @@ exports.getSubcategoriesByExperience = async (req, res) => {
 // Get a specific subcategory by its slug
 exports.getSubcategoryBySlug = async (req, res) => {
   try {
-    const experience = await Experience.findOne({ slug: req.params.experienceSlug });
+    const experiences = await getAllDocs('experiences');
+    const experience = experiences.find(exp => exp.slug === req.params.experienceSlug);
     if (!experience) return res.status(404).json({ error: 'Experience not found' });
 
-    const subcategory = await ExperienceSubcategory.findOne({
-      experienceId: experience._id,
-      slug: req.params.subcategorySlug,
-      isActive: true
-    });
+    const subcategories = await getAllDocs('experienceSubcategories');
+    const subcategory = subcategories.find(sub =>
+      sub.experienceId === experience._id &&
+      sub.slug === req.params.subcategorySlug &&
+      sub.isActive !== false
+    );
 
     if (!subcategory) return res.status(404).json({ error: 'Subcategory not found' });
 
     res.status(200).json(subcategory);
   } catch (err) {
+    console.error('Error fetching subcategory:', err);
     res.status(500).json({ error: 'Failed to fetch subcategory' });
   }
 };
