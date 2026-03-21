@@ -1,4 +1,4 @@
-const PopularPackage = require('../models/popularPackageModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 
 const parseBoolean = value => {
@@ -7,9 +7,8 @@ const parseBoolean = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await PopularPackage.find()
-    .populate('package')
-    .sort({ sortOrder: 1, createdAt: -1 });
+  const items = await getAllDocs('popularPackages');
+  items.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -20,10 +19,9 @@ exports.create = async (req, res) => {
     sortOrder: Number(req.body.sortOrder || 0),
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await PopularPackage.create(payload);
+  const doc = await createDoc('popularPackages', payload);
   await logActivity('Added popular package');
-  const populated = await PopularPackage.findById(doc._id).populate('package');
-  res.status(201).json(populated);
+  res.status(201).json(doc);
 };
 
 exports.update = async (req, res) => {
@@ -33,7 +31,7 @@ exports.update = async (req, res) => {
     sortOrder: Number(req.body.sortOrder || 0),
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await PopularPackage.findByIdAndUpdate(req.params.id, payload, { new: true }).populate('package');
+  const doc = await updateDoc('popularPackages', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Popular package not found' });
   }
@@ -42,21 +40,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await PopularPackage.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('popularPackages', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Popular package not found' });
   }
+  await deleteDoc('popularPackages', req.params.id);
   await logActivity('Deleted popular package');
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await PopularPackage.findById(req.params.id);
+  const doc = await getDocById('popularPackages', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Popular package not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  const populated = await PopularPackage.findById(doc._id).populate('package');
-  return res.json(populated);
+  const updated = await updateDoc('popularPackages', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };

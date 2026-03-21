@@ -1,10 +1,11 @@
-const TourOfIndiaCategory = require('../models/tourOfIndiaCategoryModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 
 // Get all categories
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await TourOfIndiaCategory.find({ isActive: true });
-    res.status(200).json(categories);
+    const categories = await getAllDocs('charDhamYatra');
+    const active = categories.filter(c => c.isActive !== false);
+    res.status(200).json(active);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch categories' });
   }
@@ -13,7 +14,8 @@ exports.getAllCategories = async (req, res) => {
 // Get category by slug
 exports.getCategoryBySlug = async (req, res) => {
   try {
-    const category = await TourOfIndiaCategory.findOne({ slug: req.params.slug });
+    const categories = await getAllDocs('charDhamYatra');
+    const category = categories.find(c => c.slug === req.params.slug);
     if (!category) return res.status(404).json({ error: 'Category not found' });
     res.status(200).json(category);
   } catch (err) {
@@ -24,8 +26,7 @@ exports.getCategoryBySlug = async (req, res) => {
 // Create a new category
 exports.createCategory = async (req, res) => {
   try {
-    const category = new TourOfIndiaCategory(req.body);
-    await category.save();
+    const category = await createDoc('charDhamYatra', req.body);
     res.status(201).json(category);
   } catch (err) {
     res.status(400).json({ error: 'Failed to create category', details: err.message });
@@ -35,12 +36,11 @@ exports.createCategory = async (req, res) => {
 // Update a category
 exports.updateCategory = async (req, res) => {
   try {
-    const updated = await TourOfIndiaCategory.findOneAndUpdate(
-      { slug: req.params.slug },
-      req.body,
-      { new: true }
-    );
-    if (!updated) return res.status(404).json({ error: 'Category not found' });
+    const categories = await getAllDocs('charDhamYatra');
+    const category = categories.find(c => c.slug === req.params.slug);
+    if (!category) return res.status(404).json({ error: 'Category not found' });
+    
+    const updated = await updateDoc('charDhamYatra', category._id, req.body);
     res.status(200).json(updated);
   } catch (err) {
     res.status(400).json({ error: 'Failed to update category', details: err.message });
@@ -50,8 +50,11 @@ exports.updateCategory = async (req, res) => {
 // Delete a category
 exports.deleteCategory = async (req, res) => {
   try {
-    const deleted = await TourOfIndiaCategory.findOneAndDelete({ slug: req.params.slug });
-    if (!deleted) return res.status(404).json({ error: 'Category not found' });
+    const categories = await getAllDocs('charDhamYatra');
+    const category = categories.find(c => c.slug === req.params.slug);
+    if (!category) return res.status(404).json({ error: 'Category not found' });
+    
+    await deleteDoc('charDhamYatra', category._id);
     res.status(200).json({ message: 'Category deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete category' });

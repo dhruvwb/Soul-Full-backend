@@ -1,5 +1,4 @@
-const Enquiry = require('../models/enquiryModel');
-const Destination = require('../models/destinationModel');
+const { getAllDocs } = require('../utils/firestoreHelpers');
 
 const fallbackDestinations = [
   { name: 'Jaipur', enquiriesCount: 87 },
@@ -10,13 +9,19 @@ const fallbackDestinations = [
 ];
 
 exports.getStats = async (req, res) => {
-  const [totalEnquiries, destinations] = await Promise.all([
-    Enquiry.countDocuments(),
-    Destination.find({ isActive: true }).sort({ enquiriesCount: -1, createdAt: -1 }).limit(8)
+  const [enquiries, destinations] = await Promise.all([
+    getAllDocs('enquiries'),
+    getAllDocs('destinations')
   ]);
 
+  const totalEnquiries = enquiries.length;
+  const activeDestinations = destinations
+    .filter(d => d.isActive !== false)
+    .sort((a, b) => (b.enquiriesCount || 0) - (a.enquiriesCount || 0) || (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0))
+    .slice(0, 8);
+
   const totalVisitors = Number(process.env.TOTAL_VISITORS || 0);
-  const popularDestinations = destinations.length > 0 ? destinations : fallbackDestinations;
+  const popularDestinations = activeDestinations.length > 0 ? activeDestinations : fallbackDestinations;
 
   res.json({
     totalEnquiries,

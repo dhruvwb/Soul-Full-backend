@@ -1,52 +1,45 @@
-const BestTimeToVisit = require('../models/bestTimeToVisitModel');
-const VisitMonth = require('../models/bestTimeVisitMonthModel');
-const BestTimeDestination = require('../models/bestTimeDestinationModel');
-const BestTimeTourPackage = require('../models/bestTimeTourPackageModel');
+const { getAllDocs, createDoc } = require('../utils/firestoreHelpers');
 
 // BestTimeToVisit
 exports.createSeason = async (req, res) => {
-  const season = new BestTimeToVisit(req.body);
-  await season.save();
+  const season = await createDoc('bestTimesToVisit', req.body);
   res.status(201).json(season);
 };
 
 exports.getAllSeasons = async (req, res) => {
-  const seasons = await BestTimeToVisit.find().populate('months');
+  const seasons = await getAllDocs('bestTimesToVisit');
   res.json(seasons);
 };
 
 // VisitMonth
 exports.createMonth = async (req, res) => {
-  const month = new VisitMonth(req.body);
-  await month.save();
+  const month = await createDoc('bestTimeVisitMonths', req.body);
   res.status(201).json(month);
 };
 
 exports.getAllMonths = async (req, res) => {
-  const months = await VisitMonth.find().populate('destinations');
+  const months = await getAllDocs('bestTimeVisitMonths');
   res.json(months);
 };
 
 // Destination
 exports.createDestination = async (req, res) => {
-  const destination = new BestTimeDestination(req.body);
-  await destination.save();
+  const destination = await createDoc('bestTimeDestinations', req.body);
   res.status(201).json(destination);
 };
 
 exports.getAllDestinations = async (req, res) => {
-  const destinations = await BestTimeDestination.find().populate('tourPackages');
+  const destinations = await getAllDocs('bestTimeDestinations');
   res.json(destinations);
 };
 
 // TourPackage
 exports.createTourPackage = async (req, res) => {
-  const tour = new BestTimeTourPackage(req.body);
-  await tour.save();
+  const tour = await createDoc('bestTimeTourPackages', req.body);
   res.status(201).json(tour);
 };
 
 exports.getAllPackages = async (req, res) => {
-  const packages = await BestTimeTourPackage.find().populate('destination');
+  const packages = await getAllDocs('bestTimeTourPackages');
   res.json(packages);
 };
