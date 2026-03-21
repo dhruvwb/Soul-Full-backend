@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const Enquiry = require('../models/enquiryModel');
+const { createDoc } = require('../utils/firestoreHelpers');
 
 // Create transporter
 const transporter = nodemailer.createTransport({
@@ -45,7 +45,7 @@ const sendEnquiryEmail = async (req, res) => {
   };
 
   try {
-    await Enquiry.create({
+    await createDoc('enquiries', {
       name,
       email,
       mobile,

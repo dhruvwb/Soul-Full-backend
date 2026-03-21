@@ -1,28 +1,20 @@
-const DomesticPackage = require('../models/domesticPackageModel');
-const PackageCategory = require('../models/packageCategoryModel');
-const PopularPackage = require('../models/popularPackageModel');
-const Blog = require('../models/blogModel');
-const News = require('../models/newsModel');
-const GalleryItem = require('../models/galleryItemModel');
-const Review = require('../models/reviewModel');
-const CmsContent = require('../models/cmsContentModel');
-const Destination = require('../models/destinationModel');
-const CustomPackage = require('../models/customPackageModel');
+const { getAllDocs } = require('../utils/firestoreHelpers');
 const slugify = require('../utils/slugify');
 
 exports.getDomesticPackages = async (req, res) => {
-  const items = await DomesticPackage.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('domesticPackages')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getDomesticPackageBySlug = async (req, res) => {
   const slug = String(req.params.slug || '').toLowerCase();
-  let item = await DomesticPackage.findOne({ slug, isActive: true });
+  const items = await getAllDocs('domesticPackages');
+  let item = items.find(i => i.isActive !== false && i.slug === slug);
   if (!item) {
-    const fallback = await DomesticPackage.find({ isActive: true }).select('title slug');
-    const match = fallback.find(entry => slugify(entry.slug || entry.title) === slug);
+    const match = items.find(entry => entry.isActive !== false && slugify(entry.slug || entry.title) === slug);
     if (match) {
-      item = await DomesticPackage.findById(match._id);
+      item = match;
     }
   }
   if (!item) {
@@ -32,45 +24,45 @@ exports.getDomesticPackageBySlug = async (req, res) => {
 };
 
 exports.getPackageCategories = async (req, res) => {
-  const items = await PackageCategory.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('packageCategories')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getPackagesByCategory = async (req, res) => {
   const slug = String(req.params.slug || '').toLowerCase();
-  const category = await PackageCategory.findOne({ slug, isActive: true });
+  const categories = await getAllDocs('packageCategories');
+  const category = categories.find(c => c.isActive !== false && c.slug === slug);
   if (!category) {
     return res.status(404).json({ message: 'Category not found' });
   }
-  const items = await DomesticPackage.find({
-    isActive: true,
-    categoryIds: category._id
-  }).sort({ createdAt: -1 });
-  return res.json({ category, packages: items });
+  const packages = (await getAllDocs('domesticPackages')).filter(
+    p => p.isActive !== false && p.categoryIds && p.categoryIds.includes(category.id)
+  );
+  packages.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
+  return res.json({ category, packages });
 };
 
 exports.getPopularPackages = async (req, res) => {
-  const items = await PopularPackage.find({ isActive: true })
-    .populate('package')
-    .sort({ sortOrder: 1, createdAt: -1 });
-  const filtered = items.filter(item => item.package && item.package.isActive);
-  res.json(filtered);
+  const items = (await getAllDocs('popularPackages')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
+  res.json(items);
 };
 
-
 exports.getBlogs = async (req, res) => {
-  const items = await Blog.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('blogs')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getBlogBySlug = async (req, res) => {
   const slug = String(req.params.slug || '').toLowerCase();
-  let item = await Blog.findOne({ slug, isActive: true });
+  const items = await getAllDocs('blogs');
+  let item = items.find(i => i.isActive !== false && i.slug === slug);
   if (!item) {
-    const fallback = await Blog.find({ isActive: true }).select('title slug');
-    const match = fallback.find(entry => slugify(entry.slug || entry.title) === slug);
+    const match = items.find(entry => entry.isActive !== false && slugify(entry.slug || entry.title) === slug);
     if (match) {
-      item = await Blog.findById(match._id);
+      item = match;
     }
   }
   if (!item) {
@@ -80,23 +72,27 @@ exports.getBlogBySlug = async (req, res) => {
 };
 
 exports.getNews = async (req, res) => {
-  const items = await News.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('news')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getGallery = async (req, res) => {
-  const items = await GalleryItem.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('galleryItems')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getReviews = async (req, res) => {
-  const items = await Review.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('reviews')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getCms = async (req, res) => {
-  const doc = await CmsContent.findOne();
-  res.json(doc || {});
+  const docs = await getAllDocs('cmsContent');
+  const doc = docs.length > 0 ? docs[0] : {};
+  res.json(doc);
 };
 
 const customCategories = [
@@ -107,7 +103,8 @@ const customCategories = [
 ];
 
 exports.getCustomPackageCategories = async (req, res) => {
-  const packages = await CustomPackage.find({ isActive: true }).sort({ createdAt: -1 });
+  const packages = (await getAllDocs('customPackages')).filter(p => p.isActive !== false);
+  packages.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   const categories = customCategories.map(category => {
     const match = packages.find(item => item.category === category.key && item.imageUrl);
     return {
@@ -120,27 +117,29 @@ exports.getCustomPackageCategories = async (req, res) => {
 
 exports.getCustomPackages = async (req, res) => {
   const category = String(req.query.category || '').toLowerCase();
-  const query = { isActive: true };
+  let items = await getAllDocs('customPackages');
+  items = items.filter(i => i.isActive !== false);
   if (category) {
-    query.category = category;
+    items = items.filter(i => i.category === category);
   }
-  const items = await CustomPackage.find(query).sort({ createdAt: -1 });
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getDestinations = async (req, res) => {
-  const items = await Destination.find({ isActive: true }).sort({ createdAt: -1 });
+  const items = (await getAllDocs('destinations')).filter(i => i.isActive !== false);
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
 exports.getDestinationBySlug = async (req, res) => {
   const slug = String(req.params.slug || '').toLowerCase();
-  let item = await Destination.findOne({ slug, isActive: true });
+  const items = await getAllDocs('destinations');
+  let item = items.find(i => i.isActive !== false && i.slug === slug);
   if (!item) {
-    const fallback = await Destination.find({ isActive: true }).select('name slug');
-    const match = fallback.find(entry => slugify(entry.slug || entry.name) === slug);
+    const match = items.find(entry => entry.isActive !== false && slugify(entry.slug || entry.name) === slug);
     if (match) {
-      item = await Destination.findById(match._id);
+      item = match;
     }
   }
   if (!item) {

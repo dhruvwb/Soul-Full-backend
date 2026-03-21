@@ -1,4 +1,4 @@
-const CustomPackage = require('../models/customPackageModel');
+const { getAllDocs, createDoc } = require('../utils/firestoreHelpers');
 
 const seedData = [
   {
@@ -28,11 +28,13 @@ const seedData = [
 ];
 
 const ensureSeedCustomPackages = async () => {
-  const existing = await CustomPackage.countDocuments();
-  if (existing > 0) {
+  const existing = await getAllDocs('customPackages');
+  if (existing.length > 0) {
     return;
   }
-  await CustomPackage.insertMany(seedData);
+  for (const data of seedData) {
+    await createDoc('customPackages', data);
+  }
 };
 
 module.exports = { ensureSeedCustomPackages };

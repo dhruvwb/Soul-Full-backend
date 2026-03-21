@@ -1,4 +1,4 @@
-const Experience = require('../models/experienceModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 const slugify = require('../utils/slugify');
 
@@ -8,7 +8,8 @@ const parseBoolean = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await Experience.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('experiences');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -22,7 +23,7 @@ exports.create = async (req, res) => {
     slug: slugSource ? slugify(slugSource) : undefined,
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await Experience.create(payload);
+  const doc = await createDoc('experiences', payload);
   await logActivity(`Added customized package: ${doc.title}`);
   res.status(201).json(doc);
 };
@@ -38,7 +39,7 @@ exports.update = async (req, res) => {
     isActive: parseBoolean(req.body.isActive)
   };
 
-  const doc = await Experience.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('experiences', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Customized package not found' });
   }
@@ -47,20 +48,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await Experience.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('experiences', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Customized package not found' });
   }
+  await deleteDoc('experiences', req.params.id);
   await logActivity(`Deleted customized package: ${doc.title}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await Experience.findById(req.params.id);
+  const doc = await getDocById('experiences', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Customized package not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('experiences', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };
