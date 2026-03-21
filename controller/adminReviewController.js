@@ -1,4 +1,4 @@
-const Review = require('../models/reviewModel');
+const { getAllDocs, getDocById, createDoc, updateDoc, deleteDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 
 const parseBoolean = value => {
@@ -7,7 +7,8 @@ const parseBoolean = value => {
 };
 
 exports.list = async (req, res) => {
-  const items = await Review.find().sort({ createdAt: -1 });
+  const items = await getAllDocs('reviews');
+  items.sort((a, b) => (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0));
   res.json(items);
 };
 
@@ -17,7 +18,7 @@ exports.create = async (req, res) => {
     rating: Number(req.body.rating || 5),
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await Review.create(payload);
+  const doc = await createDoc('reviews', payload);
   await logActivity(`Added review: ${doc.name}`);
   res.status(201).json(doc);
 };
@@ -28,7 +29,7 @@ exports.update = async (req, res) => {
     rating: Number(req.body.rating || 5),
     isActive: parseBoolean(req.body.isActive)
   };
-  const doc = await Review.findByIdAndUpdate(req.params.id, payload, { new: true });
+  const doc = await updateDoc('reviews', req.params.id, payload);
   if (!doc) {
     return res.status(404).json({ message: 'Review not found' });
   }
@@ -37,20 +38,20 @@ exports.update = async (req, res) => {
 };
 
 exports.remove = async (req, res) => {
-  const doc = await Review.findByIdAndDelete(req.params.id);
+  const doc = await getDocById('reviews', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Review not found' });
   }
+  await deleteDoc('reviews', req.params.id);
   await logActivity(`Deleted review: ${doc.name}`);
   return res.json({ message: 'Deleted' });
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await Review.findById(req.params.id);
+  const doc = await getDocById('reviews', req.params.id);
   if (!doc) {
     return res.status(404).json({ message: 'Review not found' });
   }
-  doc.isActive = !doc.isActive;
-  await doc.save();
-  return res.json(doc);
+  const updated = await updateDoc('reviews', req.params.id, { isActive: !doc.isActive });
+  return res.json(updated);
 };

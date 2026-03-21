@@ -1,8 +1,10 @@
-const CmsContent = require('../models/cmsContentModel');
+const { getAllDocs, getDocById, createDoc, updateDoc } = require('../utils/firestoreHelpers');
 const { logActivity } = require('../services/activityService');
 
+const CMS_CONFIG_ID = 'cms-config'; // Singleton document ID
+
 exports.get = async (req, res) => {
-  const doc = await CmsContent.findOne();
+  const doc = await getDocById('cmsContent', CMS_CONFIG_ID);
   res.json(doc || {});
 };
 
@@ -13,7 +15,7 @@ exports.save = async (req, res) => {
   const aboutImage = req.files?.aboutImage?.[0]
     ? `/uploads/${req.files.aboutImage[0].filename}`
     : undefined;
-  const existing = await CmsContent.findOne();
+  const existing = await getDocById('cmsContent', CMS_CONFIG_ID);
   let aboutStats = req.body.aboutStats;
   if (typeof aboutStats === 'string') {
     try {
@@ -32,9 +34,9 @@ exports.save = async (req, res) => {
 
   let doc;
   if (existing) {
-    doc = await CmsContent.findByIdAndUpdate(existing._id, payload, { new: true });
+    doc = await updateDoc('cmsContent', CMS_CONFIG_ID, payload);
   } else {
-    doc = await CmsContent.create(payload);
+    doc = await createDoc('cmsContent', payload, CMS_CONFIG_ID);
   }
 
   await logActivity('Updated CMS content');
