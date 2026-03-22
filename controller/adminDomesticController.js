@@ -37,13 +37,17 @@ exports.create = async (req, res) => {
       ...req.body,
       images,
       categoryIds: parseIdList(req.body.categoryIds) || [],
-      enquireEnabled: parseBoolean(req.body.enquireEnabled),
-      isActive: parseBoolean(req.body.isActive),
+      enquireEnabled: parseBoolean(req.body.enquireEnabled) ?? true,
+      isActive: parseBoolean(req.body.isActive) ?? true,
       createdAt: new Date().toISOString()
     };
     if (slugSource) {
       payload.slug = slugify(slugSource);
     }
+    
+    // Remove undefined values for Firestore
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
+    
     const doc = await createDoc('domesticPackages', payload);
     await logActivity(`Added domestic package: ${doc.title}`);
     res.status(201).json(doc);
@@ -71,6 +75,9 @@ exports.update = async (req, res) => {
     if (slugSource) {
       payload.slug = slugify(slugSource);
     }
+
+    // Remove undefined values for Firestore
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
     const doc = await updateDoc('domesticPackages', req.params.id, payload);
 
