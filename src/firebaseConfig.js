@@ -45,8 +45,9 @@ try {
   throw error;
 }
 
-// Get Firestore database reference
+// Get Firestore database reference and enable ignoreUndefinedProperties
 const db = admin.firestore();
+db.settings({ ignoreUndefinedProperties: true });
 
 // Enable offline persistence (optional, for better reliability)
 try {
