@@ -30,49 +30,60 @@ exports.list = async (req, res) => {
 };
 
 exports.create = async (req, res) => {
-  const images = buildImages(req);
-  const slugSource = req.body.slug || req.body.title;
-  const payload = {
-    ...req.body,
-    images,
-    categoryIds: parseIdList(req.body.categoryIds) || [],
-    enquireEnabled: parseBoolean(req.body.enquireEnabled),
-    isActive: parseBoolean(req.body.isActive)
-  };
-  if (slugSource) {
-    payload.slug = slugify(slugSource);
+  try {
+    const images = buildImages(req);
+    const slugSource = req.body.slug || req.body.title;
+    const payload = {
+      ...req.body,
+      images,
+      categoryIds: parseIdList(req.body.categoryIds) || [],
+      enquireEnabled: parseBoolean(req.body.enquireEnabled),
+      isActive: parseBoolean(req.body.isActive),
+      createdAt: new Date().toISOString()
+    };
+    if (slugSource) {
+      payload.slug = slugify(slugSource);
+    }
+    const doc = await createDoc('domesticPackages', payload);
+    await logActivity(`Added domestic package: ${doc.title}`);
+    res.status(201).json(doc);
+  } catch (error) {
+    console.error('❌ Error creating domestic package:', error.message);
+    res.status(500).json({ message: 'Failed to create package', error: error.message });
   }
-  const doc = await createDoc('domesticPackages', payload);
-  await logActivity(`Added domestic package: ${doc.title}`);
-  res.status(201).json(doc);
 };
 
 exports.update = async (req, res) => {
-  const images = buildImages(req);
-  const existingImages = req.body.existingImages
-    ? JSON.parse(req.body.existingImages)
-    : undefined;
-  const slugSource = req.body.slug || req.body.title;
+  try {
+    const images = buildImages(req);
+    const existingImages = req.body.existingImages
+      ? JSON.parse(req.body.existingImages)
+      : undefined;
+    const slugSource = req.body.slug || req.body.title;
 
-  const payload = {
-    ...req.body,
-    images: existingImages ? [...existingImages, ...images] : undefined,
-    categoryIds: parseIdList(req.body.categoryIds),
-    enquireEnabled: parseBoolean(req.body.enquireEnabled),
-    isActive: parseBoolean(req.body.isActive)
-  };
-  if (slugSource) {
-    payload.slug = slugify(slugSource);
+    const payload = {
+      ...req.body,
+      images: existingImages ? [...existingImages, ...images] : undefined,
+      categoryIds: parseIdList(req.body.categoryIds),
+      enquireEnabled: parseBoolean(req.body.enquireEnabled),
+      isActive: parseBoolean(req.body.isActive)
+    };
+    if (slugSource) {
+      payload.slug = slugify(slugSource);
+    }
+
+    const doc = await updateDoc('domesticPackages', req.params.id, payload);
+
+    if (!doc) {
+      return res.status(404).json({ message: 'Package not found' });
+    }
+
+    await logActivity(`Updated domestic package: ${doc.title}`);
+    return res.json(doc);
+  } catch (error) {
+    console.error('❌ Error updating domestic package:', error.message);
+    res.status(500).json({ message: 'Failed to update package', error: error.message });
   }
-
-  const doc = await updateDoc('domesticPackages', req.params.id, payload);
-
-  if (!doc) {
-    return res.status(404).json({ message: 'Package not found' });
-  }
-
-  await logActivity(`Updated domestic package: ${doc.title}`);
-  return res.json(doc);
 };
 
 exports.remove = async (req, res) => {
@@ -86,10 +97,15 @@ exports.remove = async (req, res) => {
 };
 
 exports.toggle = async (req, res) => {
-  const doc = await getDocById('domesticPackages', req.params.id);
-  if (!doc) {
-    return res.status(404).json({ message: 'Package not found' });
+  try {
+    const doc = await getDocById('domesticPackages', req.params.id);
+    if (!doc) {
+      return res.status(404).json({ message: 'Package not found' });
+    }
+    const updated = await updateDoc('domesticPackages', req.params.id, { isActive: !doc.isActive });
+    return res.json(updated);
+  } catch (error) {
+    console.error('❌ Error toggling domestic package:', error.message);
+    res.status(500).json({ message: 'Failed to toggle package', error: error.message });
   }
-  const updated = await updateDoc('domesticPackages', req.params.id, { isActive: !doc.isActive });
-  return res.json(updated);
 };
