@@ -24,20 +24,30 @@ Promise.all([
 
 const app = express();
 
-// Middleware
+// Middleware - CORS with detailed logging
 const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001')
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean);
 
+console.log('✅ CORS Allowed Origins:', allowedOrigins);
+
 app.use(
     cors({
         origin: (origin, callback) => {
+            console.log('🔍 CORS Check - Origin:', origin);
             if (!origin || allowedOrigins.includes(origin)) {
+                console.log('✅ CORS allowed for:', origin);
                 return callback(null, true);
             }
+            console.warn('❌ CORS blocked for:', origin);
             return callback(new Error('Not allowed by CORS'));
-        }
+        },
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    })
+);
     })
 );
 app.use(express.json());
@@ -97,6 +107,21 @@ app.use('/api/public', publicRouter);
 // Sample route
 app.get('/', (req, res) => {
     res.send('🌍 Travel backend is running!');
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('❌ ERROR:', {
+        message: err.message,
+        stack: err.stack,
+        path: req.path,
+        method: req.method,
+        body: req.body
+    });
+    res.status(err.status || 500).json({ 
+        message: err.message || 'Internal Server Error',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Server Error'
+    });
 });
 
 // Start server
