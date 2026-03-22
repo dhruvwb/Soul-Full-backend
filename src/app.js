@@ -33,7 +33,7 @@ Promise.all([
 const app = express();
 
 // Middleware - CORS with detailed logging
-const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002,https://soulful-admin-panel.vercel.app,https://soul-full-two.vercel.app')
+const allowedOrigins = (process.env.FRONTEND_ORIGINS || 'http://localhost:3000,http://localhost:3001,http://localhost:3002,https://soulful-admin-panel.vercel.app,https://soul-ful-two.vercel.app')
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean);
