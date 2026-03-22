@@ -4,12 +4,20 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const connectDB = require('./db');
 const { ensureSeedAdmin } = require('../controller/adminAuthController');
 const { ensureSeedCustomPackages } = require('../controller/customPackageSeed');
 
 // Load environment variables
 dotenv.config();
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Created uploads directory:', uploadsDir);
+}
 
 // Connect to MongoDB (non-blocking - won't crash app if fails)
 connectDB().catch(err => {
@@ -116,6 +124,15 @@ app.use((err, req, res, next) => {
         method: req.method,
         body: req.body
     });
+    
+    // Handle multer errors gracefully
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'File size too large' });
+    }
+    if (err.message && err.message.includes('Only image')) {
+        return res.status(400).json({ message: err.message });
+    }
+    
     res.status(err.status || 500).json({ 
         message: err.message || 'Internal Server Error',
         error: process.env.NODE_ENV === 'development' ? err.message : 'Server Error'
